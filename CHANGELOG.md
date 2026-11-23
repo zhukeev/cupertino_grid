@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - `CupertinoGridController` (`CupertinoGrid.controller`): the host-facing
   control surface a gallery rebuilds by hand today —

@@ -3,7 +3,7 @@ description: >-
   iOS-Photos-style pinch-to-zoom grid: the photo under the fingers stays
   under them while cells morph continuously between column counts, then
   settle onto the nearest density.
-version: 0.3.0
+version: 0.4.0
 repository: https://github.com/zhukeev/cupertino_grid
 issue_tracker: https://github.com/zhukeev/cupertino_grid/issues
 topics:
