@@ -15,7 +15,7 @@ export 'src/morph_frame.dart' show MorphFrame, MorphPill, MorphTile;
 export 'src/morph_grid_stop.dart' show MorphGridStop;
 export 'src/pinch_morph_style.dart' show PinchMorphStyle;
 export 'src/pinch_morph.dart' show PinchMorph;
-export 'src/cupertino_grid.dart' show CupertinoGrid, OverscaleCommit;
+export 'src/cupertino_grid.dart' show CupertinoGrid, CupertinoGridController, GridScrollDriver, OverscaleCommit;
 export 'src/far_edge_clamp_physics.dart' show FarEdgeClampScrollPhysics;
 export 'src/reverse_refresh.dart' show CupertinoReverseRefresh;
 export 'src/tile_morph_effect.dart'

@@ -94,6 +94,11 @@ extension _ScrollAnchor on _CupertinoGridState {
   /// or filtered list stays synced even when [CupertinoGrid.itemCount] is
   /// unchanged.
   void _syncGrid() {
+    // An external landing (controller.scrollToIndex with a target count)
+    // arms this for the commit it rides — consume it here so it can never
+    // leak into an unrelated later diff.
+    final suppressHold = _suppressAnchorHold;
+    _suppressAnchorHold = false;
     // The morph captured the item count when the pinch began — a merge or
     // stack-collapse landing mid-gesture shrinks it under the overlay's
     // feet, so frames would emit indices the page no longer has. Keep the
@@ -188,7 +193,7 @@ extension _ScrollAnchor on _CupertinoGridState {
     // removal animation can read as meaningful there; they stagger in under
     // the teleported viewport and present as pop-in. Resolve everything at
     // final geometry for this commit.
-    final atomicSwap = !widget.holdScrollAnchor;
+    final atomicSwap = suppressHold || !widget.holdScrollAnchor;
     widget.debugLog?.call(
       'grid:diff +${insertions.length} -${removals.length} '
       'instant=${instantRemovals.length}/${instantInsertions.length} '
@@ -196,7 +201,7 @@ extension _ScrollAnchor on _CupertinoGridState {
       'anchor=$anchorIndex lead=$leadingIndex '
       'px=${scrollPosition?.pixels.toStringAsFixed(0) ?? '-'}',
     );
-    _holdLeadingRow(oldKeys, anchorIndex);
+    _holdLeadingRow(oldKeys, anchorIndex, suppressHold: suppressHold);
 
     // Removal positions are the doomed child's CURRENT slot — under a
     // mirrored layout that is not `index + phase` (runs flip inside their
@@ -267,11 +272,13 @@ extension _ScrollAnchor on _CupertinoGridState {
   ///
   /// Skipped while a morph owns the focal geometry and while parked at the
   /// leading edge itself (arriving items should visibly enter there).
-  void _holdLeadingRow(List<Object?> oldKeys, int anchorIndex) {
+  /// [suppressHold] carries [_syncGrid]'s consumed [_suppressAnchorHold]
+  /// flag — an external seek landing positioned the viewport itself.
+  void _holdLeadingRow(List<Object?> oldKeys, int anchorIndex, {required bool suppressHold}) {
     if (_morphActive || anchorIndex < 0 || oldKeys.isEmpty || !_scrollController.hasClients) {
       return;
     }
-    if (!widget.holdScrollAnchor) {
+    if (suppressHold || !widget.holdScrollAnchor) {
       widget.debugLog?.call('grid:hold skip=external anchor=$anchorIndex');
       return;
     }
@@ -326,11 +333,45 @@ extension _ScrollAnchor on _CupertinoGridState {
         ScrollDirection.reverse => 1,
         ScrollDirection.idle => _lastDirection,
       };
+      // Finger lifted mid-session — the coast that follows produces
+      // ballistic drive-by anchors. When this arrives at session end
+      // (after ScrollEnd) the driver is already idle — don't reopen it.
+      if (notification.direction == ScrollDirection.idle && _scrollDriver != GridScrollDriver.idle) {
+        _scrollDriver = GridScrollDriver.ballistic;
+      }
+    } else if (notification is ScrollStartNotification) {
+      // dragDetails marks a finger-driven session; a programmatic
+      // jump/correction starts a session with none.
+      _scrollDriver = notification.dragDetails != null ? GridScrollDriver.drag : GridScrollDriver.programmatic;
+    } else if (notification is ScrollUpdateNotification) {
+      if (notification.dragDetails != null) {
+        _scrollDriver = GridScrollDriver.drag;
+      } else if (_scrollDriver == GridScrollDriver.drag) {
+        _scrollDriver = GridScrollDriver.ballistic;
+      }
+    } else if (notification is ScrollEndNotification) {
+      _scrollDriver = GridScrollDriver.idle;
+      final settled = widget.onScrollSettled;
+      if (settled != null && widget.itemCount > 0 && _scrollController.hasClients) {
+        settled(_anchorIndex(), _lastDirection);
+      }
     }
 
     if (notification is ScrollUpdateNotification || notification is UserScrollNotification) {
       _fireAnchor(direction: _lastDirection);
     }
+  }
+
+  /// The topmost scrolled row's first item — the anchor edge-anchor
+  /// callbacks and the settle report resolve. Under reverse that's the
+  /// scroll-space extent near pixels + viewportHeight, not pixels itself.
+  int _anchorIndex() {
+    final stop = _currentStop;
+    final anchorY = widget.reverse
+        ? _scrollController.position.pixels + _viewportHeight
+        : _scrollController.position.pixels;
+    final row = math.max(0, stop.rowAtY(anchorY, _gridOrigin));
+    return math.min(widget.itemCount - 1, math.max(0, row * stop.columns - stop.phase));
   }
 
   /// Reports the topmost scrolled row's first item — the anchor a
@@ -341,16 +382,9 @@ extension _ScrollAnchor on _CupertinoGridState {
     if (callback == null || widget.itemCount == 0 || !_scrollController.hasClients) {
       return;
     }
-    final stop = _currentStop;
-    // The topmost visible row — under reverse that's the scroll-space
-    // extent near pixels + viewportHeight, not pixels itself.
-    final anchorY = widget.reverse
-        ? _scrollController.position.pixels + _viewportHeight
-        : _scrollController.position.pixels;
-    final row = math.max(0, stop.rowAtY(anchorY, _gridOrigin));
-    final anchor = math.min(widget.itemCount - 1, math.max(0, row * stop.columns - stop.phase));
+    final anchor = _anchorIndex();
     if (anchor == _lastAnchorIndex && direction == _lastDirection) return;
     _lastAnchorIndex = anchor;
-    callback(anchor, direction, stop.tileWidth.ceil());
+    callback(anchor, direction, _currentStop.tileWidth.ceil());
   }
 }

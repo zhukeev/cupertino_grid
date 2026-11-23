@@ -287,6 +287,11 @@ extension _GestureHandlers on _CupertinoGridState {
         _rebuild(() => _internalColumns = settleColumns);
       }
       widget.onColumnsChanged?.call(settleColumns);
+      // Report the committed rung inside the caller's own ladder order —
+      // the library sorts/dedupes internally, so a host whose density
+      // enum isn't sorted can't recover it from the raw count alone.
+      final stopIndex = _effectiveCounts().indexOf(settleColumns);
+      if (stopIndex >= 0) widget.onStopChanged?.call(stopIndex);
       // The pinch commits to a new density — iOS Photos ticks here.
       unawaited(HapticFeedback.selectionClick());
     }
