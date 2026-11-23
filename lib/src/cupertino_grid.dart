@@ -16,6 +16,7 @@ import 'pinch_morph.dart';
 import 'tile_morph_effect.dart';
 
 part 'cupertino_grid/gesture_handlers.dart';
+part 'cupertino_grid/grid_controller.dart';
 part 'cupertino_grid/morph_overlay.dart';
 part 'cupertino_grid/scroll_anchor.dart';
 part 'cupertino_grid/two_finger_recognizer.dart';
@@ -129,6 +130,9 @@ final class CupertinoGrid extends StatefulWidget {
     this.nearEndExtent = 800,
     this.onWarmRange,
     this.onVisibleAnchorChanged,
+    this.onScrollSettled,
+    this.onStopChanged,
+    this.controller,
     this.overlayBuilder,
     this.overlayImageFor,
     this.overlayImagesListenable,
@@ -277,6 +281,30 @@ final class CupertinoGrid extends StatefulWidget {
   /// [direction] is +1 scrolling down, −1 up; [tileSize] is the current
   /// cell width for resolution-aware prefetch.
   final void Function(int anchorIndex, int direction, int tileSize)? onVisibleAnchorChanged;
+
+  /// Fires when a scroll session ENDS — the finger lifted and any
+  /// ballistic coast came to rest, or a programmatic jump/animation
+  /// completed. Reports the anchor item and direction the scroll settled
+  /// on, so hosts can run anchor-driven work (prefetch, gap probes) at
+  /// the position the user actually landed instead of every drive-by
+  /// anchor a fling passed through. Pair with
+  /// [CupertinoGridController.scrollDriver] to classify mid-session
+  /// anchors.
+  final void Function(int anchorIndex, int direction)? onScrollSettled;
+
+  /// Fires when a pinch commits a column count, reporting the count's
+  /// index inside the caller's own ladder list ([columnCounts] or the
+  /// list [columnCountsForWidth] returned). Lets a host map a committed
+  /// count back to its own density enum without re-scanning the ladder —
+  /// important when the ladder's order is not sorted (the grid sorts
+  /// internally). Not fired when the committed count is absent from the
+  /// current ladder (e.g. a stale uncontrolled count after a resize).
+  final ValueChanged<int>? onStopChanged;
+
+  /// Optional controller for index navigation, global-point hit-testing,
+  /// drag-range selection with edge auto-scroll, and scroll-session
+  /// state — see [CupertinoGridController].
+  final CupertinoGridController? controller;
 
   /// Extra layer between the resting grid and the morph overlay (e.g. a
   /// timeline scrubber). The returned widget is placed as a direct [Stack]
@@ -558,6 +586,16 @@ final class _CupertinoGridState extends State<CupertinoGrid> with TickerProvider
   int _lastAnchorIndex = -1;
   int _lastDirection = 1;
 
+  /// Current scroll-session driver, tracked from scroll notifications —
+  /// surfaced through [CupertinoGridController.scrollDriver].
+  GridScrollDriver _scrollDriver = GridScrollDriver.idle;
+
+  /// Suppresses the leading-row anchor hold for the next [_syncGrid]
+  /// pass — armed by [CupertinoGridController.scrollToIndex] when the
+  /// caller positions the viewport itself as part of the same commit.
+  /// Consumed (cleared) inside [_syncGrid].
+  bool _suppressAnchorHold = false;
+
   /// Indices where a new section begins, memoized against the item count
   /// and [CupertinoGrid.sectionLabelVersion] so morph frames don't rescan
   /// the whole list.
@@ -615,6 +653,7 @@ final class _CupertinoGridState extends State<CupertinoGrid> with TickerProvider
     _internalColumns = _initialColumns();
     _ownedScrollController = ScrollController()..addListener(_updateScrollOffset);
     widget.scrollController?.addListener(_updateScrollOffset);
+    widget.controller?._attach(this);
     _settle = AnimationController.unbounded(vsync: this)..addListener(_onSettleTick);
     _edgeSqueeze = AnimationController.unbounded(vsync: this, value: 1);
     _overlayFade = AnimationController(vsync: this, duration: widget.overlayFadeDuration);
@@ -636,6 +675,10 @@ final class _CupertinoGridState extends State<CupertinoGrid> with TickerProvider
     if (oldWidget.scrollController != widget.scrollController) {
       oldWidget.scrollController?.removeListener(_updateScrollOffset);
       widget.scrollController?.addListener(_updateScrollOffset);
+    }
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detach(this);
+      widget.controller?._attach(this);
     }
     // Every knob is read lazily (engine set/frame, gesture commit,
     // overlay paint), so the swap is safe even mid-settle — the next
@@ -675,6 +718,7 @@ final class _CupertinoGridState extends State<CupertinoGrid> with TickerProvider
     _overlayFadeCurve.dispose();
     _overlayFade.dispose();
     _morph.dispose();
+    widget.controller?._detach(this);
     widget.scrollController?.removeListener(_updateScrollOffset);
     _ownedScrollController.removeListener(_updateScrollOffset);
     _ownedScrollController.dispose();

@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+- `CupertinoGridController` (`CupertinoGrid.controller`): the host-facing
+  control surface a gallery rebuilds by hand today —
+  `scrollToIndex(index, targetItemCount:, leadingInset:)` lands a row
+  under floating chrome in one commit: it projects the post-merge
+  `maxScrollExtent` from the grid's own extent delta (the live max still
+  describes the pre-merge list mid-build), suppresses the leading-row
+  anchor hold for that pass, and re-verifies the landing once extents
+  settle. `scrollOffsetForIndex` exposes the same math for overlays;
+  `indexAtGlobalPoint` resolves an item under a global point, axis-aware.
+- Drag-range selection: `beginSelectionDrag` / `updateSelectionDrag` /
+  `endSelectionDrag` sweep a contiguous SLOT range emitted as item
+  indices on `selectedIndices` (mapped back through `itemAt` under
+  `mirrorRows`), with select-and-drift edge auto-scroll
+  (`edgeScrollBand`/`edgeScrollMaxSpeed`).
+- `GridScrollDriver` (`CupertinoGridController.scrollDriver`) and
+  `CupertinoGrid.onScrollSettled`: the grid classifies each scroll
+  session (drag / ballistic / programmatic / idle) and reports the
+  anchor + direction it settled on, so hosts no longer wrap the grid in
+  a `NotificationListener` to tell drive-by anchors from real landings.
+- `CupertinoGrid.onStopChanged`: a pinch commit reports the column
+  count's index inside the caller's own ladder list
+  (`columnCounts`/`columnCountsForWidth`) — needed when the ladder order
+  isn't the sorted order the engine uses internally.
+
 ## 0.3.0
 
 - `CupertinoGrid.onOverscaleCommit`: a release stretched past

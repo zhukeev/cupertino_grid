@@ -162,6 +162,45 @@ CupertinoGrid(
 When `columns` is null the grid tracks density internally from
 `initialColumns` (default: the middle of the ladder).
 
+`onStopChanged` reports the committed count's index inside YOUR ladder
+list — useful when the ladder order isn't sorted (e.g. a density enum
+ordered dense→sparse), since `onColumnsChanged` alone can't recover it.
+
+### Seek landing and selection: CupertinoGridController
+
+```dart
+final grid = CupertinoGridController();
+
+CupertinoGrid(
+  controller: grid,
+  onScrollSettled: (anchor, direction) => prefetchAround(anchor),
+  // ...
+)
+
+// Land a row under floating chrome in the same commit as a list merge —
+// the call projects the post-merge scroll extent and drops the grid's
+// anchor hold for that pass so the landing can't drift:
+grid.scrollToIndex(bestIndex, targetItemCount: merged.length,
+    leadingInset: MediaQuery.paddingOf(context).top + barHeight);
+```
+
+The controller owns the mechanics a gallery otherwise re-derives:
+
+- `scrollToIndex` — already-visible rows stay put; `animate: true` glides
+  instead of jumping; `scrollOffsetForIndex` exposes the same math for
+  overlays (a timeline scrubber's thumb).
+- `indexAtGlobalPoint` — item under a global point, axis-aware.
+- `beginSelectionDrag` / `updateSelectionDrag` / `endSelectionDrag` —
+  long-press-anchored range selection emitted as item indices on
+  `selectedIndices` (a contiguous slot sweep mapped through `itemAt`
+  under `mirrorRows`), with select-and-drift edge auto-scroll. Wire them
+  to your tiles' `onLongPress*` callbacks; the selection model stays
+  yours.
+- `scrollDriver` (`GridScrollDriver`) + `onScrollSettled` — drag /
+  ballistic / programmatic / idle session classification and the
+  settle report, so prefetch and gap probes fire where the scroll
+  actually lands rather than at every drive-by anchor.
+
 ### Insert/remove diffs
 
 ```dart
