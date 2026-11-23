@@ -1,0 +1,31 @@
+name: cupertino_grid
+description: >-
+  iOS-Photos-style pinch-to-zoom grid: the photo under the fingers stays
+  under them while cells morph continuously between column counts, then
+  settle onto the nearest density.
+version: 0.3.0
+repository: https://github.com/zhukeev/cupertino_grid
+issue_tracker: https://github.com/zhukeev/cupertino_grid/issues
+topics:
+  - grid
+  - gallery
+  - photo
+  - zoom
+  - gestures
+
+environment:
+  sdk: ^3.9.0
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_ui: ^1.0.2
+  material_ui: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

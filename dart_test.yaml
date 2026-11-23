@@ -1,0 +1,4 @@
+# Golden baselines are generated on macOS; Linux runs should exclude this
+# tag because glyph/AA rasterization differs across platforms.
+tags:
+  golden:
