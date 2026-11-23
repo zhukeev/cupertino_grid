@@ -7,8 +7,6 @@ iOS-Photos-style pinch-to-zoom grid for Flutter. Pinch with two fingers and
 every cell morphs continuously between column counts — the photo under the
 fingers stays under them — then the grid springs onto the nearest density.
 
-![Pinch morph demo](doc/pinch_morph_demo.gif)
-
 ## Features
 
 - **Focal-point preservation** — the pinched photo tracks the fingers through
