@@ -62,7 +62,9 @@ final class CupertinoGridController {
   /// sweep, so under `mirrorRows` the set is not a contiguous index
   /// range. Emits on every extension; listen and map indices to host
   /// identities.
-  final ValueNotifier<Set<int>> selectedIndices = ValueNotifier<Set<int>>(const {});
+  final ValueNotifier<Set<int>> selectedIndices = ValueNotifier<Set<int>>(
+    const {},
+  );
 
   _CupertinoGridState? _state;
 
@@ -87,7 +89,8 @@ final class CupertinoGridController {
   }
 
   /// The current scroll-session driver — see [GridScrollDriver].
-  GridScrollDriver get scrollDriver => _state?._scrollDriver ?? GridScrollDriver.idle;
+  GridScrollDriver get scrollDriver =>
+      _state?._scrollDriver ?? GridScrollDriver.idle;
 
   /// Whether the pinch morph currently owns the grid's geometry —
   /// mid-pinch geometry no longer matches the painted cells, so
@@ -112,7 +115,9 @@ final class CupertinoGridController {
     final stop = state._currentStop;
     final row = stop.rowOf(index);
     return state.widget.reverse
-        ? stop.rowTop(row + 1, state._gridOrigin) + leadingInset - state._viewportHeight
+        ? stop.rowTop(row + 1, state._gridOrigin) +
+              leadingInset -
+              state._viewportHeight
         : stop.rowTop(row, state._gridOrigin) - leadingInset;
   }
 
@@ -151,7 +156,8 @@ final class CupertinoGridController {
     // diff still runs this pass and its anchor hold would drag the
     // viewport back to the OLD leading row — suppress it the same as a
     // jump landing.
-    if (rowTop >= controller.offset && rowBottom <= controller.offset + state._viewportHeight) {
+    if (rowTop >= controller.offset &&
+        rowBottom <= controller.offset + state._viewportHeight) {
       if (targetItemCount != null) state._suppressAnchorHold = true;
       return;
     }
@@ -160,8 +166,12 @@ final class CupertinoGridController {
     // mid-build, so project the grid's own extent delta onto it — a bare
     // rowTop projection misses the header/footer extent and clamps the
     // landing short near the end.
-    final liveMax = position.hasContentDimensions ? position.maxScrollExtent : 0.0;
-    final oldCount = state._syncedCount >= 0 ? state._syncedCount : state.widget.itemCount;
+    final liveMax = position.hasContentDimensions
+        ? position.maxScrollExtent
+        : 0.0;
+    final oldCount = state._syncedCount >= 0
+        ? state._syncedCount
+        : state.widget.itemCount;
     final newCount = targetItemCount ?? state.widget.itemCount;
     final projectedMax = math.max(
       0.0,
@@ -211,16 +221,22 @@ final class CupertinoGridController {
     final row = stop.rowOf(index);
     final rowTop = stop.rowTop(row, state._gridOrigin);
     final rowBottom = stop.rowTop(row + 1, state._gridOrigin);
-    if (rowTop >= controller.offset && rowBottom <= controller.offset + state._viewportHeight) {
+    if (rowTop >= controller.offset &&
+        rowBottom <= controller.offset + state._viewportHeight) {
       return;
     }
     final rawOffset = state.widget.reverse
         ? rowBottom + _pendingVerifyInset - state._viewportHeight
         : rowTop - _pendingVerifyInset;
-    final offset = rawOffset.clamp(controller.position.minScrollExtent, controller.position.maxScrollExtent);
+    final offset = rawOffset.clamp(
+      controller.position.minScrollExtent,
+      controller.position.maxScrollExtent,
+    );
     state._suppressAnchorHold = true;
     controller.jumpTo(offset);
-    WidgetsBinding.instance.addPostFrameCallback((_) => state._suppressAnchorHold = false);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => state._suppressAnchorHold = false,
+    );
   }
 
   /// Resolves the item under a GLOBAL screen point through the live
@@ -237,7 +253,11 @@ final class CupertinoGridController {
     final contentY = state.widget.reverse
         ? controller.offset + state._viewportHeight - local.dy
         : local.dy + controller.offset;
-    return state._currentStop.indexAt(Offset(local.dx, contentY), state.widget.itemCount, state._gridOrigin);
+    return state._currentStop.indexAt(
+      Offset(local.dx, contentY),
+      state.widget.itemCount,
+      state._gridOrigin,
+    );
   }
 
   /// Anchors a drag-select range at [index] — the long-pressed tile —
@@ -245,7 +265,11 @@ final class CupertinoGridController {
   /// [base] indices stay selected for the whole session; the anchor
   /// itself always lands in the emitted set so a drag can't drop its
   /// own tile.
-  void beginSelectionDrag(int index, Offset global, {Set<int> base = const {}}) {
+  void beginSelectionDrag(
+    int index,
+    Offset global, {
+    Set<int> base = const {},
+  }) {
     _endEdgeScroll();
     _dragAnchorIndex = index;
     _dragLastIndex = index;
@@ -307,9 +331,12 @@ final class CupertinoGridController {
     final dy = box.globalToLocal(global).dy;
     double velocity = 0;
     if (dy < edgeScrollBand) {
-      velocity = -edgeScrollMaxSpeed * (1 - (dy / edgeScrollBand)).clamp(0.0, 1.0);
+      velocity =
+          -edgeScrollMaxSpeed * (1 - (dy / edgeScrollBand)).clamp(0.0, 1.0);
     } else if (dy > box.size.height - edgeScrollBand) {
-      velocity = edgeScrollMaxSpeed * (1 - (box.size.height - dy) / edgeScrollBand).clamp(0.0, 1.0);
+      velocity =
+          edgeScrollMaxSpeed *
+          (1 - (box.size.height - dy) / edgeScrollBand).clamp(0.0, 1.0);
     }
     // Reversed axis: toward the top edge is increasing offset.
     if (state.widget.reverse) velocity = -velocity;
@@ -322,12 +349,18 @@ final class CupertinoGridController {
       final state = _state;
       final controller = state?._scrollController;
       final velocity = _edgeScrollVelocity;
-      if (state == null || controller == null || !controller.hasClients || velocity == 0) {
+      if (state == null ||
+          controller == null ||
+          !controller.hasClients ||
+          velocity == 0) {
         _endEdgeScroll();
         return;
       }
       final position = controller.position;
-      final next = (controller.offset + velocity).clamp(position.minScrollExtent, position.maxScrollExtent);
+      final next = (controller.offset + velocity).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
       if (next == controller.offset) {
         _endEdgeScroll();
         return;
